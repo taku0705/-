@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ローリー積載量計算</title>
+<style>
+body{font-family:sans-serif;padding:12px;background:#f5f5f5;max-width:400px;margin:0 auto}
+h2{text-align:center;color:#333;margin:5px 0 15px;font-size:20px}
+.card{background:#fff;padding:15px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.1);margin-bottom:12px}
+label{display:block;margin-top:8px;font-weight:bold;color:#555;font-size:14px}
+input,select{width:100%;padding:10px;margin-top:4px;box-sizing:border-box;font-size:16px;border:1px solid #ccc;border-radius:6px}
+.result-box{background:#e8f5e9;border:2px solid #4caf50;padding:12px;border-radius:10px;text-align:center;margin-top:12px}
+.result-val{font-size:28px;font-weight:bold;color:#2e7d32}
+.btn-row{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;padding:12px;border:none;border-radius:6px;font-size:15px;font-weight:bold;cursor:pointer;color:white}
+.btn-save{background:#2196F3}
+.btn-clear{background:#f44336}
+.history-box{background:#fff;padding:12px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.1);margin-top:12px}
+.history-title{font-weight:bold;color:#333;margin-bottom:8px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.history-list{list-style:none;padding:0;margin:0;font-size:13px}
+.history-item{padding:8px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+.history-item:last-child{border-bottom:none}
+.his-time{color:#888;font-size:11px}
+.his-name{font-weight:bold;color:#333}
+.his-val{font-weight:bold;color:#2e7d32;font-size:16px}
+.btn-his-clear{background:none;border:none;color:#999;font-size:12px;text-decoration:underline;cursor:pointer;padding:0}
+</style>
+</head>
+<body>
+<h2>🚚 ローリー積載量計算</h2>
+<div class="card">
+<label>品名選択（比重）</label>
+<select id="density" onchange="calc()">
+<option value="1.179">SU (1.179)</option>
+<option value="1.234">N-3 (1.234)</option>
+<option value="1.192">K (1.192)</option>
+<option value="1.190">CK (1.190)</option>
+<option value="1.179">R (1.179)</option>
+<option value="1.225">U-3 (1.225)</option>
+<option value="1.206">G (1.206)</option>
+<option value="1.240">F-N-3 (1.240)</option>
+<option value="1.205">OIS (1.205)</option>
+<option value="1.237">CN-3 (1.237)</option>
+<option value="1.192">NK-12 (1.192)</option>
+<option value="1.195">T (1.195)</option>
+</select>
+<label>空車重量 (kg)</label>
+<input type="number" id="empty" placeholder="例: 5230" oninput="calc()">
+<label>積載後重量 (kg)</label>
+<input type="number" id="loaded" placeholder="例: 6570" oninput="calc()">
+</div>
+<div class="result-box">
+<div>積載量（端数切り捨て）</div>
+<div class="result-val"><span id="ans">0</span> L</div>
+</div>
+<div class="btn-row">
+<button class="btn btn-save" onclick="addHistory()">履歴に保存</button>
+<button class="btn btn-clear" onclick="clearAll()">入力をクリア</button>
+</div>
+<div class="history-box">
+<div class="history-title"><span>直近の履歴（最大10件）</span><button class="btn-his-clear" onclick="clearHistory()">履歴消去</button></div>
+<ul id="hisList" class="history-list"><li style="color:#999;text-align:center;padding:10px 0;">履歴はありません</li></ul>
+</div>
+<script>
+function getHis(){try{return JSON.parse(localStorage.getItem('lorry_history')||'[]');}catch(e){return[];}}
+function saveHis(h){try{localStorage.setItem('lorry_history',JSON.stringify(h));}catch(e){}}
+function getItemName(){var sel=document.getElementById('density');return sel.options[sel.selectedIndex].text.split(' ')[0];}
+function calc(){
+var d=parseFloat(document.getElementById('density').value)||0;
+var e=parseFloat(document.getElementById('empty').value)||0;
+var l=parseFloat(document.getElementById('loaded').value)||0;
+if(l>e&&d>0){
+var w=l-e;
+var vol=Math.floor(w/d);
+document.getElementById('ans').innerText=vol.toLocaleString();
+}else{
+document.getElementById('ans').innerText='0';
+}
+}
+function clearAll(){
+document.getElementById('empty').value='';
+document.getElementById('loaded').value='';
+calc();
+}
+function addHistory(){
+var e=parseFloat(document.getElementById('empty').value)||0;
+var l=parseFloat(document.getElementById('loaded').value)||0;
+var ans=document.getElementById('ans').innerText;
+if(ans==='0'||e===0||l===0){alert('空車と積載後の重量を正しく入力してください');return;}
+var name=getItemName();
+var now=new Date();
+var timeStr=(now.getMonth()+1)+'/'+now.getDate()+' '+('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);
+var h=getHis();
+h.unshift({time:timeStr,name:name,empty:e,loaded:l,vol:ans});
+if(h.length>10){h=h.slice(0,10);}
+saveHis(h);
+renderHistory();
+}
+function clearHistory(){
+if(confirm('履歴をすべて消去しますか？')){
+saveHis([]);
+renderHistory();
+}
+}
+function renderHistory(){
+var h=getHis();
+var el=document.getElementById('hisList');
+if(h.length===0){el.innerHTML='<li style="color:#999;text-align:center;padding:10px 0;">履歴はありません</li>';return;}
+var html='';
+for(var i=0;i<h.length;i++){
+var item=h[i];
+html+='<li class="history-item"><div><span class="his-name">'+item.name+'</span> <span class="his-time">('+item.time+')</span><br><span style="color:#666;font-size:12px;">空: '+item.empty+'kg / 積: '+item.loaded+'kg</span></div><div class="his-val">'+item.vol+' L</div></li>';
+}
+el.innerHTML=html;
+}
+window.onload=renderHistory;
+</script>
+</body>
+</html>
